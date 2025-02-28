@@ -3,6 +3,9 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+words/
+extracted_anki/
+*.apkg
 # C extensions
 *.so
 
