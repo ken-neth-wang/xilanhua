@@ -5,10 +5,8 @@ import subprocess
 import tempfile
 import random
 import time
-# Add word bank
 
 import json
-import os
 
 def load_word_banks():
     """Load word banks from JSON files"""
