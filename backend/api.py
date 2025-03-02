@@ -15,30 +15,50 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile = File(...)):
     # Save the uploaded file temporarily
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
     try:
+        # Reset file position to beginning to ensure we can read the content
+        await audio.seek(0)
+        
         # Write the file content
-        temp_file.write(await audio.read())
+        content = await audio.read()
+        print(f"Content length: {len(content) if content else 0} bytes")
+        if not content:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="The uploaded file is empty or corrupted")
+            
+        temp_file.write(content)
         temp_file.close()
+        print(f"Temp file written to: {temp_file.name}")
+        print(f"Temp file size: {os.path.getsize(temp_file.name)} bytes")
         
         # Add error handling and logging
         try:
             # Use your existing function to transcribe
+            print("Starting transcription...")
             transcribed_text = transcribe_audio(temp_file.name)
+            print(f"Raw transcribed text: {transcribed_text}")
+            
             cleaned_text = clean_text(transcribed_text)
+            print(f"Cleaned text: {cleaned_text}")
             
             return {"transcription": cleaned_text, "raw_transcription": transcribed_text}
         except Exception as e:
             # Log the specific error
             print(f"Transcription error: {str(e)}")
-            return {"error": str(e)}, 500
+            print(f"Error type: {type(e)}")
+            import traceback
+            print(f"Full traceback: {traceback.format_exc()}")
+            # Return a proper FastAPI response, not a tuple
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail=str(e))
     finally:
         # Clean up the temporary file
         if os.path.exists(temp_file.name):
+            print(f"Cleaning up temp file: {temp_file.name}")
             os.remove(temp_file.name)
 # Add error handling and logging
 @app.get("/api/words")
@@ -54,7 +74,8 @@ async def get_words():
         return word_banks
     except Exception as e:
         print(f"Error loading words: {str(e)}")
-        return {"error": str(e)}, 500
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/api/words")
 async def add_word(word_data: dict):
     try:

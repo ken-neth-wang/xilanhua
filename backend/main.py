@@ -273,16 +273,22 @@ def transcribe_audio(file_path, language="chinese"):
     # Open and read the audio file
     with open(file_path, 'rb') as audio_file:
         # Convert speech to text
-        transcription = client.speech_to_text.convert(
-            file=audio_file,
-            model_id="scribe_v1",
-            tag_audio_events=True,
-            language_code=language_code,
-            diarize=True
-        )
-        
-        return transcription.text
-
+        try:
+            transcription = client.speech_to_text.convert(
+                file=audio_file,
+                model_id="scribe_v1",
+                tag_audio_events=True,
+                language_code=language_code,
+                diarize=True
+            )
+            
+            if not transcription or not transcription.text:
+                return "No speech detected"
+                
+            return transcription.text
+        except Exception as e:
+            print(f"Error in transcribe_audio: {str(e)}")
+            raise e  # Re-raise to be caught by the API endpoint
 def main():
     while True:
         print("\nLanguage Pronunciation Practice")
