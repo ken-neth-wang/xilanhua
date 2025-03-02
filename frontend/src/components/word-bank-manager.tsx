@@ -14,15 +14,12 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
   const [newWord, setNewWord] = useState<WordData>({ word: "", meaning: "" });
   const [currentLevelTab, setCurrentLevelTab] = useState<"beginner" | "intermediate">("beginner");
   
-  const handleSave = () => {
-    onSave(editBanks);
-  };
-  
   const handleRemoveWord = (level: "beginner" | "intermediate", index: number) => {
     const updatedBanks = {...editBanks};
     updatedBanks[level] = [...updatedBanks[level]];
     updatedBanks[level].splice(index, 1);
     setEditBanks(updatedBanks);
+    onSave(updatedBanks); // Auto-save when removing a word
   };
   
   const handleAddWord = () => {
@@ -31,9 +28,9 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
       updatedBanks[currentLevelTab] = [...updatedBanks[currentLevelTab], {...newWord}];
       setEditBanks(updatedBanks);
       setNewWord({ word: "", meaning: "" });
+      onSave(updatedBanks); // Auto-save when adding a word
     }
   };
-  
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
@@ -93,15 +90,7 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
                   </button>
                 </div>
               </div>
-              
-              <div className="mt-6">
-                <button
-                  className="bg-emerald-800 text-white px-6 py-3 rounded-md hover:bg-emerald-900 transition-colors w-full"
-                  onClick={handleSave}
-                >
-                  Save Changes
-                </button>
-              </div>
+         
             </div>
           </TabsContent>
         ))}
