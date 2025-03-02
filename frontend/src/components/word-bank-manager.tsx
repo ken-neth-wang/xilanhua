@@ -31,6 +31,32 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
       onSave(updatedBanks); // Auto-save when adding a word
     }
   };
+
+  const autoPopulateWordBank = () => {
+    const beginnerWords: WordData[] = [
+      { word: "你好", meaning: "hello" },
+      { word: "谢谢", meaning: "thank you" },
+      { word: "再见", meaning: "goodbye" },
+      { word: "是", meaning: "yes/to be" },
+      { word: "不", meaning: "no/not" },
+    ];
+    
+    const intermediateWords: WordData[] = [
+      { word: "工作", meaning: "work/job" },
+      { word: "学习", meaning: "study" },
+      { word: "朋友", meaning: "friend" },
+      { word: "时间", meaning: "time" },
+      { word: "问题", meaning: "problem/question" },
+    ];
+    
+    const wordsToAdd = currentLevelTab === "beginner" ? beginnerWords : intermediateWords;
+    
+    const updatedBanks = {...editBanks};
+    updatedBanks[currentLevelTab] = [...updatedBanks[currentLevelTab], ...wordsToAdd];
+    setEditBanks(updatedBanks);
+    onSave(updatedBanks);
+  };
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
@@ -44,6 +70,17 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
         {(["beginner", "intermediate"] as const).map(level => (
           <TabsContent key={level} value={level}>
             <div className="space-y-3">
+
+            <div className="flex justify-between items-center mb-4">
+                <h3 className="font-medium">{level.charAt(0).toUpperCase() + level.slice(1)} Words</h3>
+                <button 
+                  className="bg-blue-600 text-white px-3 py-1 rounded-md hover:bg-blue-700 transition-colors text-sm"
+                  onClick={autoPopulateWordBank}
+                >
+                  Auto-Populate
+                </button>
+              </div>
+              
               {editBanks[level].map((item, index) => (
                 <div key={index} className="flex items-center border border-gray-200 p-3 rounded-md">
                   <div className="flex-1">

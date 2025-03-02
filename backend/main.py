@@ -16,30 +16,57 @@ def load_word_banks(language="chinese"):
     }
     
     try:
+        # Debug: Print current working directory
+        print(f"Current working directory when loading: {os.getcwd()}")
+        
+        # Use absolute paths based on the location of the script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        words_dir = os.path.join(base_dir, 'words')
+        
+        print(f"Using base directory: {base_dir}")
+        print(f"Words directory path: {words_dir}")
+        
         # Create words directory if it doesn't exist
-        if not os.path.exists('words'):
-            os.makedirs('words')
+        if not os.path.exists(words_dir):
+            print(f"Creating words directory at {words_dir}")
+            os.makedirs(words_dir)
         
         # Create language directory if it doesn't exist
-        language_dir = os.path.join('words', language)
+        language_dir = os.path.join(words_dir, language)
         if not os.path.exists(language_dir):
+            print(f"Creating language directory at {language_dir}")
             os.makedirs(language_dir)
         
         # Load beginner words
         beginner_path = os.path.join(language_dir, 'beginner.json')
+        print(f"Looking for beginner words at: {beginner_path}")
+        
         if os.path.exists(beginner_path):
+            print(f"Found beginner words file")
             with open(beginner_path, 'r', encoding='utf-8') as f:
                 word_banks['beginner'] = json.load(f)
+                print(f"Loaded {len(word_banks['beginner'])} beginner words")
+        else:
+            print(f"Beginner words file not found")
                 
         # Load intermediate words
         intermediate_path = os.path.join(language_dir, 'intermediate.json')
+        print(f"Looking for intermediate words at: {intermediate_path}")
+        
         if os.path.exists(intermediate_path):
+            print(f"Found intermediate words file")
             with open(intermediate_path, 'r', encoding='utf-8') as f:
                 word_banks['intermediate'] = json.load(f)
+                print(f"Loaded {len(word_banks['intermediate'])} intermediate words")
+        else:
+            print(f"Intermediate words file not found")
                 
     except Exception as e:
         print(f"Error loading word banks: {e}")
+        import traceback
+        traceback.print_exc()
         # Use default words if files can't be loaded
+        print(f"Using default words for {language}")
         word_banks['beginner'] = DEFAULT_WORDS[language]['beginner']
         word_banks['intermediate'] = DEFAULT_WORDS[language]['intermediate']
     
@@ -48,26 +75,41 @@ def load_word_banks(language="chinese"):
 def save_word_banks(word_banks, language="chinese"):
     """Save word banks to JSON files for the specified language"""
     try:
+        # Use absolute paths based on the location of the script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        words_dir = os.path.join(base_dir, 'words')
+        
+        print(f"Using base directory: {base_dir}")
+        print(f"Words directory path: {words_dir}")
+        
         # Create words directory if it doesn't exist
-        if not os.path.exists('words'):
-            os.makedirs('words')
+        if not os.path.exists(words_dir):
+            print(f"Creating words directory at {words_dir}")
+            os.makedirs(words_dir)
             
         # Create language directory if it doesn't exist
-        language_dir = os.path.join('words', language)
+        language_dir = os.path.join(words_dir, language)
         if not os.path.exists(language_dir):
+            print(f"Creating language directory at {language_dir}")
             os.makedirs(language_dir)
             
         beginner_path = os.path.join(language_dir, 'beginner.json')
+        print(f"Saving beginner words to: {beginner_path}")
+        
         with open(beginner_path, 'w', encoding='utf-8') as f:
             json.dump(word_banks['beginner'], f, ensure_ascii=False, indent=2)
             
         intermediate_path = os.path.join(language_dir, 'intermediate.json')
+        print(f"Saving intermediate words to: {intermediate_path}")
+        
         with open(intermediate_path, 'w', encoding='utf-8') as f:
             json.dump(word_banks['intermediate'], f, ensure_ascii=False, indent=2)
             
         print("Word banks saved successfully!")
     except Exception as e:
         print(f"Error saving word banks: {e}")
+        import traceback
+        traceback.print_exc()
 
 def manage_words(language):
     """Menu for managing word banks"""

@@ -9,7 +9,6 @@ interface PronunciationPracticeProps {
     intermediate: WordData[];
   };
 }
-
 export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps) {
   const [activeWord, setActiveWord] = useState<WordData | null>(null);
   const [currentLevel, setCurrentLevel] = useState("beginner");
@@ -22,10 +21,50 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
   const [loading, setLoading] = useState(false);
   const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
   const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
+  const [practiceMode, setPracticeMode] = useState<"single" | "all">("single");
+  const [currentWordIndex, setCurrentWordIndex] = useState(0);
 
   const handlePractice = (word: WordData) => {
+    setPracticeMode("single");
     setActiveWord(word);
     setAudioResult(null);
+  };
+
+
+  const startPracticeAll = () => {
+    setPracticeMode("all");
+    setCurrentWordIndex(0);
+    const firstWord = wordBanks[currentLevel as keyof typeof wordBanks][0];
+    setActiveWord(firstWord);
+    setAudioResult(null);
+    
+    // Automatically start recording after a short delay
+    setTimeout(() => {
+      startRecording();
+    }, 1000); // 1 second delay to give user time to prepare
+  };
+
+  const moveToNextWord = () => {
+    if (practiceMode === "all") {
+      const currentWords = wordBanks[currentLevel as keyof typeof wordBanks];
+      const nextIndex = currentWordIndex + 1;
+      
+      if (nextIndex < currentWords.length) {
+        setCurrentWordIndex(nextIndex);
+        setActiveWord(currentWords[nextIndex]);
+        setAudioResult(null);
+        
+        // Automatically start recording for the next word after a short delay
+        setTimeout(() => {
+          startRecording();
+        }, 1000); // 1 second delay to give user time to prepare
+      } else {
+        // End of practice session
+        setPracticeMode("single");
+        setActiveWord(null);
+        alert("Congratulations! You've completed practicing all words in this level.");
+      }
+    }
   };
 
   const startRecording = async () => {
@@ -103,9 +142,22 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
   };
 
 
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-xl font-semibold mb-4">Practice Pronunciation</h2>
+      
+      {!activeWord && (
+        <div className="mb-6">
+          <button 
+            className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium hover:bg-emerald-900 transition-colors w-full"
+            onClick={startPracticeAll}
+          >
+            Practice All Words
+          </button>
+        </div>
+      )}
+      
       <div className="grid grid-cols-2 gap-4">
         {wordBanks[currentLevel as keyof typeof wordBanks]?.map((item, index) => (
           <div 
@@ -125,7 +177,13 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
           <h3 className="text-2xl mb-2 font-medium">{activeWord.word}</h3>
           <p className="text-gray-600 mb-4">Meaning: {activeWord.meaning}</p>
           
-          {!recording && !loading && !audioResult && (
+          {practiceMode === "all" && (
+            <div className="mb-4 text-sm text-gray-600">
+              Word {currentWordIndex + 1} of {wordBanks[currentLevel as keyof typeof wordBanks].length}
+            </div>
+          )}
+          
+          {!recording && !loading && !audioResult && practiceMode === "single" && (
             <button 
               className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium hover:bg-emerald-900 transition-colors"
               onClick={startRecording}
@@ -133,14 +191,13 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
               Start Recording
             </button>
           )}
-          
+
           {recording && (
             <div className="text-center">
               <div className="w-16 h-16 bg-red-500 rounded-full mx-auto animate-pulse mb-2"></div>
               <p>Recording... Speak now</p>
             </div>
           )}
-          
           {loading && (
             <div className="text-center">
               <div className="w-8 h-8 border-4 border-emerald-800 border-t-transparent rounded-full animate-spin mx-auto"></div>
@@ -165,12 +222,23 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
                   </div>
                 )}
                 
+                <div className="flex space-x-4 mt-4">
                 <button 
-                  className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium mt-4 hover:bg-emerald-900 transition-colors"
+                  className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium hover:bg-emerald-900 transition-colors"
                   onClick={startRecording}
                 >
                   Try Again
                 </button>
+                
+                {practiceMode === "all" && (
+                  <button 
+                    className="bg-blue-600 text-white px-6 py-3 rounded-md font-medium hover:bg-blue-700 transition-colors"
+                    onClick={moveToNextWord}
+                  >
+                    Next Word
+                  </button>
+                )}
+              </div>
               </div>
             </div>
           )}
@@ -182,7 +250,11 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
         <select 
           className="border border-gray-300 p-2 rounded-md w-full"
           value={currentLevel}
-          onChange={(e) => setCurrentLevel(e.target.value)}
+          onChange={(e) => {
+            setCurrentLevel(e.target.value);
+            setActiveWord(null);
+            setPracticeMode("single");
+          }}
         >
           <option value="beginner">Beginner Words</option>
           <option value="intermediate">Intermediate Words</option>

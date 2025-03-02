@@ -55,3 +55,54 @@ async def get_words():
     except Exception as e:
         print(f"Error loading words: {str(e)}")
         return {"error": str(e)}, 500
+@app.post("/api/words")
+async def add_word(word_data: dict):
+    try:
+        # Import the functions from main.py
+        from main import save_word_banks
+        
+        print(f"Received word data: {word_data}")  # Debug
+        
+        # Check if we're receiving the entire word banks structure
+        if "beginner" in word_data and "intermediate" in word_data:
+            # We're receiving the entire word banks structure
+            word_banks = word_data
+            language = "chinese"  # Default to Chinese
+            
+            # Save the word banks directly
+            save_word_banks(word_banks, language)
+            
+            return word_banks
+        else:
+            # We're receiving a single word to add
+            # Import load_word_banks for this case
+            from main import load_word_banks
+            
+            # Get the word data from the request
+            level = word_data.get("level")
+            word = word_data.get("word")
+            meaning = word_data.get("meaning")
+            language = word_data.get("language", "chinese")
+            
+            # Validate input
+            if not level or not word or not meaning:
+                return {"error": "Missing required fields: level, word, or meaning"}
+            
+            if level not in ["beginner", "intermediate"]:
+                return {"error": "Level must be 'beginner' or 'intermediate'"}
+            
+            # Load current word banks
+            word_banks = load_word_banks(language)
+            
+            # Add the new word
+            word_banks[level].append({"word": word, "meaning": meaning})
+            
+            # Save the updated word banks
+            save_word_banks(word_banks, language)
+            
+            return word_banks
+    except Exception as e:
+        print(f"Error adding word: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return {"error": str(e)}
