@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { WordBanks, WordItem } from '@/types';
+import { WordBanks, WordData } from '@/types';
 
 interface WordBankManagerProps {
   wordBanks: WordBanks;
@@ -11,7 +11,7 @@ interface WordBankManagerProps {
 
 export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
   const [editBanks, setEditBanks] = useState<WordBanks>({...wordBanks});
-  const [newWord, setNewWord] = useState<WordItem>({ word: "", meaning: "" });
+  const [newWord, setNewWord] = useState<WordData>({ word: "", meaning: "" });
   const [currentLevelTab, setCurrentLevelTab] = useState<"beginner" | "intermediate">("beginner");
   
   const handleSave = () => {
@@ -38,7 +38,7 @@ export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
     <div className="bg-white rounded-lg p-6 shadow-sm">
       <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
       
-      <Tabs value={currentLevelTab} onValueChange={(value: "beginner" | "intermediate") => setCurrentLevelTab(value)}>
+      <Tabs value={currentLevelTab} onValueChange={(value) => setCurrentLevelTab(value as "beginner" | "intermediate")}>
         <TabsList className="mb-4 w-full">
           <TabsTrigger value="beginner" className="flex-1">Beginner</TabsTrigger>
           <TabsTrigger value="intermediate" className="flex-1">Intermediate</TabsTrigger>

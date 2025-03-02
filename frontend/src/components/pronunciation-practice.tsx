@@ -1,17 +1,17 @@
 "use client"
 
 import { useState } from 'react';
-import { WordItem } from '@/types';
+import { WordData } from '@/types';
 
 interface PronunciationPracticeProps {
   wordBanks: {
-    beginner: WordItem[];
-    intermediate: WordItem[];
+    beginner: WordData[];
+    intermediate: WordData[];
   };
 }
 
 export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps) {
-  const [activeWord, setActiveWord] = useState<WordItem | null>(null);
+  const [activeWord, setActiveWord] = useState<WordData | null>(null);
   const [currentLevel, setCurrentLevel] = useState("beginner");
   const [recording, setRecording] = useState(false);
   const [audioResult, setAudioResult] = useState<{
@@ -20,34 +20,88 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
     target: string;
   } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [mediaRecorder, setMediaRecorder] = useState<MediaRecorder | null>(null);
+  const [audioChunks, setAudioChunks] = useState<Blob[]>([]);
 
-  const handlePractice = (word: WordItem) => {
+  const handlePractice = (word: WordData) => {
     setActiveWord(word);
     setAudioResult(null);
   };
 
-  const startRecording = () => {
-    setRecording(true);
-    setAudioResult(null);
-    
-    // Simulating recording and processing
-    // In a real app, connect to your API
-    setTimeout(() => {
-      setRecording(false);
-      setLoading(true);
+  const startRecording = async () => {
+    try {
+      setRecording(true);
+      setAudioResult(null);
+      setAudioChunks([]);
       
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          setAudioChunks(prev => [...prev, e.data]);
+        }
+      };
+      
+      recorder.onstop = async () => {
+        setLoading(true);
+        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+        await sendAudioToBackend(audioBlob);
+      };
+      
+      setMediaRecorder(recorder);
+      recorder.start();
+      
+      // Stop recording after 3 seconds
       setTimeout(() => {
-        setLoading(false);
-        // Simulate response (in production, fetch from backend)
-        const matched = Math.random() > 0.5;
-        setAudioResult({
-          success: matched,
-          transcription: matched ? activeWord!.word : "你的",
-          target: activeWord!.word
-        });
-      }, 1500);
-    }, 3000);
+        if (recorder.state === 'recording') {
+          recorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+          setRecording(false);
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error("Error accessing microphone:", error);
+      setRecording(false);
+      alert("Could not access microphone. Please check permissions.");
+    }
   };
+  
+  const sendAudioToBackend = async (audioBlob: Blob) => {
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      
+      const response = await fetch('http://localhost:8000/api/transcribe', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Server responded with ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Compare transcription with target word
+      const transcription = data.transcription;
+      const success = transcription.toLowerCase() === activeWord!.word.toLowerCase();
+      
+      setAudioResult({
+        success,
+        transcription,
+        target: activeWord!.word
+      });
+      
+    } catch (error) {
+      console.error("Error sending audio to backend:", error);
+      alert("Failed to process audio. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
 
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm">
