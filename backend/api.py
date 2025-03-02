@@ -64,18 +64,73 @@ async def transcribe(audio: UploadFile = File(...)):
 @app.get("/api/words")
 async def get_words():
     try:
-        # Import the function from main.py
-        from main import load_word_banks
+        # Use the Anki import functionality instead of loading from JSON
+        from ank import import_anki_to_wordbank
         
-        # Load word banks
-        word_banks = load_word_banks()
+        # Path to your Anki file in the extracted_anki folder
+        # You might want to make this configurable or find the most recent file
+        anki_db_path = os.path.join("extracted_anki", "collection.anki2")
+        
+        if not os.path.exists(anki_db_path):
+            # Fall back to the original method if Anki file doesn't exist
+            from main import load_word_banks
+            word_banks = load_word_banks()
+            print("Using JSON word banks (Anki file not found)")
+        else:
+            # Use the Anki database directly
+            from ank import read_anki_database, convert_anki_to_wordbank
+            cards = read_anki_database(anki_db_path)
+            word_banks = convert_anki_to_wordbank(cards)
+            print(f"Loaded {len(cards)} cards from Anki database")
         
         # Return the word banks as JSON
         return word_banks
     except Exception as e:
         print(f"Error loading words: {str(e)}")
+        import traceback
+        traceback.print_exc()
         from fastapi import HTTPException
         raise HTTPException(status_code=500, detail=str(e))
+@app.post("/api/import-anki")
+async def import_anki(anki_file: UploadFile = File(...)):
+    # Save the uploaded file temporarily
+    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.apkg')
+    try:
+        # Reset file position to beginning to ensure we can read the content
+        await anki_file.seek(0)
+        
+        # Write the file content
+        content = await anki_file.read()
+        if not content:
+            from fastapi import HTTPException
+            raise HTTPException(status_code=400, detail="The uploaded file is empty or corrupted")
+            
+        temp_file.write(content)
+        temp_file.close()
+        
+        # Import the Anki deck
+        from ank import import_anki_to_wordbank
+        word_banks = import_anki_to_wordbank(temp_file.name)
+        
+        # Optionally save the word banks to your JSON files
+        from main import save_word_banks
+        save_word_banks(word_banks, "chinese")  # Assuming Chinese is the default
+        
+        # Return the imported word banks
+        return {
+            "message": f"Successfully imported Anki deck with {len(word_banks['beginner'])} beginner and {len(word_banks['intermediate'])} intermediate words",
+            "word_banks": word_banks
+        }
+    except Exception as e:
+        print(f"Error importing Anki file: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        # Clean up the temporary file
+        if os.path.exists(temp_file.name):
+            os.remove(temp_file.name)
 @app.post("/api/words")
 async def add_word(word_data: dict):
     try:

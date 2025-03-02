@@ -147,14 +147,12 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
       // Compare transcription with target word
       const transcription = data.transcription;
       const success = transcription.toLowerCase() === activeWord!.word.toLowerCase();
-      console.log("hi there")
 
       setAudioResult({
         success,
         transcription,
         target: activeWord!.word
       });
-      console.log("hi there2")
 
     } catch (error) {
       console.error("Error sending audio to backend:", error);
