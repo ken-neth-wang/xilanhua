@@ -76,16 +76,28 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       
+      // Create a new array to collect chunks for this recording session
+      const chunks: Blob[] = [];
+      
       recorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
-          setAudioChunks(prev => [...prev, e.data]);
+          chunks.push(e.data);
         }
       };
       
       recorder.onstop = async () => {
         setLoading(true);
-        const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
-        await sendAudioToBackend(audioBlob);
+        // Use the local chunks array instead of the state variable
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        
+        // Check if the blob has content
+        if (audioBlob.size > 0) {
+          await sendAudioToBackend(audioBlob);
+        } else {
+          console.error("Empty audio blob created");
+          setLoading(false);
+          alert("No audio was recorded. Please try again.");
+        }
       };
       
       setMediaRecorder(recorder);
@@ -106,9 +118,11 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
       alert("Could not access microphone. Please check permissions.");
     }
   };
-  
   const sendAudioToBackend = async (audioBlob: Blob) => {
     try {
+      // Debug log to check blob size
+      console.log(`Sending audio blob of size: ${audioBlob.size} bytes`);
+      
       const formData = new FormData();
       formData.append('audio', audioBlob);
       
@@ -122,17 +136,26 @@ export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps)
       }
       
       const data = await response.json();
+      console.log("Received response from server:", data);
+      
+      // Check if data has the expected structure
+      if (!data.hasOwnProperty('transcription')) {
+        console.error("Response missing transcription field:", data);
+        throw new Error("Invalid response format from server");
+      }
       
       // Compare transcription with target word
       const transcription = data.transcription;
       const success = transcription.toLowerCase() === activeWord!.word.toLowerCase();
-      
+      console.log("hi there")
+
       setAudioResult({
         success,
         transcription,
         target: activeWord!.word
       });
-      
+      console.log("hi there2")
+
     } catch (error) {
       console.error("Error sending audio to backend:", error);
       alert("Failed to process audio. Please try again.");
