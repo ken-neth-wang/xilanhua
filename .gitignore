@@ -16,6 +16,8 @@ extracted_anki/
 *.ogg
 *.webm
 
+.DS_Store
+
 # Distribution / packaging
 .Python
 build/
