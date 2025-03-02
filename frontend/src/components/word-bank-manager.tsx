@@ -1,106 +1,111 @@
 "use client"
 
-import { useState } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { WordBanks, WordData } from '@/types'
+import { useState } from 'react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { WordBanks, WordItem } from '@/types';
 
-interface Props {
+interface WordBankManagerProps {
   wordBanks: WordBanks;
-  onSave: (wordBanks: WordBanks) => void;
+  onSave: (banks: WordBanks) => void;
 }
 
-export function WordBankManager({ wordBanks, onSave }: Props) {
-  const [level, setLevel] = useState<'beginner' | 'intermediate'>('beginner');
-  const [newWord, setNewWord] = useState('');
-  const [newMeaning, setNewMeaning] = useState('');
-
-  const addWord = () => {
-    if (!newWord.trim() || !newMeaning.trim()) return;
-    
-    const updatedBanks = {
-      ...wordBanks,
-      [level]: [...wordBanks[level], { word: newWord, meaning: newMeaning }]
-    };
-    onSave(updatedBanks);
-    setNewWord('');
-    setNewMeaning('');
+export function WordBankManager({ wordBanks, onSave }: WordBankManagerProps) {
+  const [editBanks, setEditBanks] = useState<WordBanks>({...wordBanks});
+  const [newWord, setNewWord] = useState<WordItem>({ word: "", meaning: "" });
+  const [currentLevelTab, setCurrentLevelTab] = useState<"beginner" | "intermediate">("beginner");
+  
+  const handleSave = () => {
+    onSave(editBanks);
   };
-
-  const removeWord = (index: number) => {
-    const updatedBanks = {
-      ...wordBanks,
-      [level]: wordBanks[level].filter((_, i) => i !== index)
-    };
-    onSave(updatedBanks);
+  
+  const handleRemoveWord = (level: "beginner" | "intermediate", index: number) => {
+    const updatedBanks = {...editBanks};
+    updatedBanks[level] = [...updatedBanks[level]];
+    updatedBanks[level].splice(index, 1);
+    setEditBanks(updatedBanks);
   };
-
+  
+  const handleAddWord = () => {
+    if (newWord.word && newWord.meaning) {
+      const updatedBanks = {...editBanks};
+      updatedBanks[currentLevelTab] = [...updatedBanks[currentLevelTab], {...newWord}];
+      setEditBanks(updatedBanks);
+      setNewWord({ word: "", meaning: "" });
+    }
+  };
+  
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Word Bank Manager</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <label className="text-sm font-medium">Level</label>
-          <Select 
-            value={level} 
-            onValueChange={(value: 'beginner' | 'intermediate') => setLevel(value)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select level" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="beginner">Beginner</SelectItem>
-              <SelectItem value="intermediate">Intermediate</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Input
-            placeholder="Chinese Word"
-            value={newWord}
-            onChange={(e) => setNewWord(e.target.value)}
-          />
-          <Input
-            placeholder="English Meaning"
-            value={newMeaning}
-            onChange={(e) => setNewMeaning(e.target.value)}
-          />
-          <Button onClick={addWord}>Add Word</Button>
-        </div>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Chinese</TableHead>
-              <TableHead>English</TableHead>
-              <TableHead>Action</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {wordBanks[level].map((word, index) => (
-              <TableRow key={index}>
-                <TableCell>{word.word}</TableCell>
-                <TableCell>{word.meaning}</TableCell>
-                <TableCell>
-                  <Button 
-                    variant="destructive" 
-                    onClick={() => removeWord(index)}
-                    size="sm"
+    <div className="bg-white rounded-lg p-6 shadow-sm">
+      <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
+      
+      <Tabs value={currentLevelTab} onValueChange={(value: "beginner" | "intermediate") => setCurrentLevelTab(value)}>
+        <TabsList className="mb-4 w-full">
+          <TabsTrigger value="beginner" className="flex-1">Beginner</TabsTrigger>
+          <TabsTrigger value="intermediate" className="flex-1">Intermediate</TabsTrigger>
+        </TabsList>
+        
+        {(["beginner", "intermediate"] as const).map(level => (
+          <TabsContent key={level} value={level}>
+            <div className="space-y-3">
+              {editBanks[level].map((item, index) => (
+                <div key={index} className="flex items-center border border-gray-200 p-3 rounded-md">
+                  <div className="flex-1">
+                    <div className="font-medium">{item.word}</div>
+                    <div className="text-gray-600 text-sm">{item.meaning}</div>
+                  </div>
+                  <button 
+                    className="text-red-500 px-3 py-1 hover:bg-red-50 rounded-md"
+                    onClick={() => handleRemoveWord(level, index)}
                   >
                     Remove
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </CardContent>
-    </Card>
+                  </button>
+                </div>
+              ))}
+              
+              <div className="pt-4 bg-gray-50 p-4 rounded-md mt-4">
+                <h3 className="font-medium mb-3">Add New Word</h3>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm mb-1">Chinese Word</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={newWord.word}
+                      onChange={(e) => setNewWord({...newWord, word: e.target.value})}
+                      placeholder="e.g. 你好"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">English Meaning</label>
+                    <input
+                      type="text"
+                      className="w-full p-2 border border-gray-300 rounded-md"
+                      value={newWord.meaning}
+                      onChange={(e) => setNewWord({...newWord, meaning: e.target.value})}
+                      placeholder="e.g. hello"
+                    />
+                  </div>
+                  <button
+                    className="bg-emerald-800 text-white px-4 py-2 rounded-md hover:bg-emerald-900 transition-colors w-full"
+                    onClick={handleAddWord}
+                  >
+                    Add Word
+                  </button>
+                </div>
+              </div>
+              
+              <div className="mt-6">
+                <button
+                  className="bg-emerald-800 text-white px-6 py-3 rounded-md hover:bg-emerald-900 transition-colors w-full"
+                  onClick={handleSave}
+                >
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </TabsContent>
+        ))}
+      </Tabs>
+    </div>
   );
 }

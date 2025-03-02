@@ -1,128 +1,139 @@
 "use client"
 
-import { useState, useRef } from 'react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { WordData } from '@/types'
-import { api } from '@/lib/api'
-import { Mic, StopCircle } from 'lucide-react'
+import { useState } from 'react';
+import { WordItem } from '@/types';
 
-interface Props {
-  wordBank: WordData[]
+interface PronunciationPracticeProps {
+  wordBanks: {
+    beginner: WordItem[];
+    intermediate: WordItem[];
+  };
 }
 
-export function PronunciationPractice({ wordBank }: Props) {
-  const [currentWord, setCurrentWord] = useState<WordData | null>(null)
-  const [isRecording, setIsRecording] = useState(false)
-  const [result, setResult] = useState<string | null>(null)
-  const mediaRecorder = useRef<MediaRecorder | null>(null)
+export function PronunciationPractice({ wordBanks }: PronunciationPracticeProps) {
+  const [activeWord, setActiveWord] = useState<WordItem | null>(null);
+  const [currentLevel, setCurrentLevel] = useState("beginner");
+  const [recording, setRecording] = useState(false);
+  const [audioResult, setAudioResult] = useState<{
+    success: boolean;
+    transcription: string;
+    target: string;
+  } | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  const getRandomWord = () => {
-    const randomWord = wordBank[Math.floor(Math.random() * wordBank.length)]
-    setCurrentWord(randomWord)
-    setResult(null)
-  }
+  const handlePractice = (word: WordItem) => {
+    setActiveWord(word);
+    setAudioResult(null);
+  };
 
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      mediaRecorder.current = new MediaRecorder(stream)
-      const chunks: BlobPart[] = []
-
-      mediaRecorder.current.ondataavailable = (e) => chunks.push(e.data)
-
-      mediaRecorder.current.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/wav' })
-
-        // Create FormData to send the audio file to the backend
-        const formData = new FormData()
-        formData.append('audio', audioBlob, 'recording.wav')
-
-        try {
-          // Send to your Python backend
-          const response = await fetch('/api/transcribe', {
-            method: 'POST',
-            body: formData,
-          })
-
-          if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Server error:', errorData);
-            setResult(`Error: ${errorData.error || 'Failed to transcribe audio'}`);
-            return;
-          }
-
-          const data = await response.json()
-          if (data.transcription) {
-            setResult(data.transcription)
-          } else {
-            setResult('No transcription returned')
-          }
-        } catch (error) {
-          console.error('Error sending audio to backend:', error)
-          setResult(`Error: ${error.message || 'Unknown error occurred'}`)
-        }
-      }
-
-      mediaRecorder.current.start()
-      setIsRecording(true)
+  const startRecording = () => {
+    setRecording(true);
+    setAudioResult(null);
+    
+    // Simulating recording and processing
+    // In a real app, connect to your API
+    setTimeout(() => {
+      setRecording(false);
+      setLoading(true);
+      
       setTimeout(() => {
-        mediaRecorder.current?.stop()
-        setIsRecording(false)
-      }, 5000)
-    } catch (error) {
-      console.error('Error accessing microphone:', error)
-    }
-  }
+        setLoading(false);
+        // Simulate response (in production, fetch from backend)
+        const matched = Math.random() > 0.5;
+        setAudioResult({
+          success: matched,
+          transcription: matched ? activeWord!.word : "你的",
+          target: activeWord!.word
+        });
+      }, 1500);
+    }, 3000);
+  };
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Pronunciation Practice</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Button onClick={getRandomWord} variant="outline">
-          Get Random Word
-        </Button>
-
-        {currentWord && (
-          <div className="space-y-4">
-            <div className="text-2xl font-bold">
-              {currentWord.word} ({currentWord.meaning})
-            </div>
-            <Button
-              onClick={startRecording}
-              disabled={isRecording}
-              variant={isRecording ? "destructive" : "default"}
-            >
-              {isRecording ? (
-                <>
-                  <StopCircle className="mr-2 h-4 w-4" />
-                  Recording...
-                </>
-              ) : (
-                <>
-                  <Mic className="mr-2 h-4 w-4" />
-                  Start Recording
-                </>
-              )}
-            </Button>
+    <div className="bg-white rounded-lg p-6 shadow-sm">
+      <h2 className="text-xl font-semibold mb-4">Practice Pronunciation</h2>
+      <div className="grid grid-cols-2 gap-4">
+        {wordBanks[currentLevel as keyof typeof wordBanks]?.map((item, index) => (
+          <div 
+            key={index} 
+            className={`bg-gray-50 rounded-lg p-4 cursor-pointer hover:bg-gray-100 transition-colors
+              ${activeWord && activeWord.word === item.word ? 'border-2 border-emerald-800' : ''}`}
+            onClick={() => handlePractice(item)}
+          >
+            <div className="text-2xl mb-1">{item.word}</div>
+            <div className="text-gray-600">{item.meaning}</div>
           </div>
-        )}
-
-        {result && (
-          <Alert variant={result === currentWord?.word ? "default" : "destructive"}>
-            <AlertTitle>Result</AlertTitle>
-            <AlertDescription>
-              You said: {result}
-              {result === currentWord?.word
-                ? ' - Perfect pronunciation!'
-                : ' - Try again!'}
-            </AlertDescription>
-          </Alert>
-        )}
-      </CardContent>
-    </Card>
-  )
+        ))}
+      </div>
+      
+      {activeWord && (
+        <div className="mt-6 p-6 bg-gray-50 rounded-lg">
+          <h3 className="text-2xl mb-2 font-medium">{activeWord.word}</h3>
+          <p className="text-gray-600 mb-4">Meaning: {activeWord.meaning}</p>
+          
+          {!recording && !loading && !audioResult && (
+            <button 
+              className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium hover:bg-emerald-900 transition-colors"
+              onClick={startRecording}
+            >
+              Start Recording
+            </button>
+          )}
+          
+          {recording && (
+            <div className="text-center">
+              <div className="w-16 h-16 bg-red-500 rounded-full mx-auto animate-pulse mb-2"></div>
+              <p>Recording... Speak now</p>
+            </div>
+          )}
+          
+          {loading && (
+            <div className="text-center">
+              <div className="w-8 h-8 border-4 border-emerald-800 border-t-transparent rounded-full animate-spin mx-auto"></div>
+              <p className="mt-2">Processing audio...</p>
+            </div>
+          )}
+          
+          {audioResult && (
+            <div className="mt-4">
+              <h4 className="font-medium mb-2">Results:</h4>
+              <div className="flex flex-col space-y-2">
+                <div>Target: <span className="font-medium">{audioResult.target}</span></div>
+                <div>You said: <span className="font-medium">{audioResult.transcription}</span></div>
+                
+                {audioResult.success ? (
+                  <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mt-2">
+                    <span className="font-medium">Perfect pronunciation!</span>
+                  </div>
+                ) : (
+                  <div className="bg-amber-100 border border-amber-400 text-amber-700 px-4 py-3 rounded mt-2">
+                    <span className="font-medium">Try again!</span>
+                  </div>
+                )}
+                
+                <button 
+                  className="bg-emerald-800 text-white px-6 py-3 rounded-md font-medium mt-4 hover:bg-emerald-900 transition-colors"
+                  onClick={startRecording}
+                >
+                  Try Again
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+      
+      <div className="mt-6">
+        <div className="text-sm text-gray-600 mb-2">Difficulty Level:</div>
+        <select 
+          className="border border-gray-300 p-2 rounded-md w-full"
+          value={currentLevel}
+          onChange={(e) => setCurrentLevel(e.target.value)}
+        >
+          <option value="beginner">Beginner Words</option>
+          <option value="intermediate">Intermediate Words</option>
+        </select>
+      </div>
+    </div>
+  );
 }
