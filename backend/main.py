@@ -8,8 +8,8 @@ import time
 
 import json
 
-def load_word_banks():
-    """Load word banks from JSON files"""
+def load_word_banks(language="chinese"):
+    """Load word banks from JSON files for the specified language"""
     word_banks = {
         'beginner': [],
         'intermediate': []
@@ -20,46 +20,61 @@ def load_word_banks():
         if not os.path.exists('words'):
             os.makedirs('words')
         
+        # Create language directory if it doesn't exist
+        language_dir = os.path.join('words', language)
+        if not os.path.exists(language_dir):
+            os.makedirs(language_dir)
+        
         # Load beginner words
-        if os.path.exists('words/beginner.json'):
-            with open('words/beginner.json', 'r', encoding='utf-8') as f:
+        beginner_path = os.path.join(language_dir, 'beginner.json')
+        if os.path.exists(beginner_path):
+            with open(beginner_path, 'r', encoding='utf-8') as f:
                 word_banks['beginner'] = json.load(f)
                 
         # Load intermediate words
-        if os.path.exists('words/intermediate.json'):
-            with open('words/intermediate.json', 'r', encoding='utf-8') as f:
+        intermediate_path = os.path.join(language_dir, 'intermediate.json')
+        if os.path.exists(intermediate_path):
+            with open(intermediate_path, 'r', encoding='utf-8') as f:
                 word_banks['intermediate'] = json.load(f)
                 
     except Exception as e:
         print(f"Error loading word banks: {e}")
         # Use default words if files can't be loaded
-        word_banks['beginner'] = CHINESE_WORDS_BEGINNER
-        word_banks['intermediate'] = CHINESE_WORDS_INTERMEDIATE
+        word_banks['beginner'] = DEFAULT_WORDS[language]['beginner']
+        word_banks['intermediate'] = DEFAULT_WORDS[language]['intermediate']
     
     return word_banks
 
-def save_word_banks(word_banks):
-    """Save word banks to JSON files"""
+def save_word_banks(word_banks, language="chinese"):
+    """Save word banks to JSON files for the specified language"""
     try:
+        # Create words directory if it doesn't exist
         if not os.path.exists('words'):
             os.makedirs('words')
             
-        with open('words/beginner.json', 'w', encoding='utf-8') as f:
+        # Create language directory if it doesn't exist
+        language_dir = os.path.join('words', language)
+        if not os.path.exists(language_dir):
+            os.makedirs(language_dir)
+            
+        beginner_path = os.path.join(language_dir, 'beginner.json')
+        with open(beginner_path, 'w', encoding='utf-8') as f:
             json.dump(word_banks['beginner'], f, ensure_ascii=False, indent=2)
             
-        with open('words/intermediate.json', 'w', encoding='utf-8') as f:
+        intermediate_path = os.path.join(language_dir, 'intermediate.json')
+        with open(intermediate_path, 'w', encoding='utf-8') as f:
             json.dump(word_banks['intermediate'], f, ensure_ascii=False, indent=2)
             
         print("Word banks saved successfully!")
     except Exception as e:
         print(f"Error saving word banks: {e}")
 
-def manage_words():
+def manage_words(language):
     """Menu for managing word banks"""
-    word_banks = load_word_banks()
+    word_banks = load_word_banks(language)
     
     while True:
-        print("\nWord Bank Management")
+        print(f"\n{language.capitalize()} Word Bank Management")
         print("-------------------")
         print("1. View all words")
         print("2. Add new word")
@@ -82,7 +97,7 @@ def manage_words():
                 print("Invalid level!")
                 continue
                 
-            word = input("Enter the Chinese word: ")
+            word = input(f"Enter the {language} word: ")
             meaning = input("Enter the English meaning: ")
             word_banks[level].append({"word": word, "meaning": meaning})
             print("Word added successfully!")
@@ -105,34 +120,76 @@ def manage_words():
                 print("Invalid number!")
                 
         elif choice == "4":
-            save_word_banks(word_banks)
+            save_word_banks(word_banks, language)
             break
 
-CHINESE_WORDS_BEGINNER = [
-    "你好",    # hello
-    "谢谢",    # thank you
-    "再见",    # goodbye
-    "朋友",    # friend
-    "学习",    # study
-    "喜欢",    # like
-    "吃饭",    # eat
-    "水",      # water
-    "猫",      # cat
-    "狗",      # dog
-]
+# Default word banks for different languages
+DEFAULT_WORDS = {
+    "chinese": {
+        "beginner": [
+            {"word": "你好", "meaning": "hello"},
+            {"word": "谢谢", "meaning": "thank you"},
+            {"word": "再见", "meaning": "goodbye"},
+            {"word": "朋友", "meaning": "friend"},
+            {"word": "学习", "meaning": "study"},
+            {"word": "喜欢", "meaning": "like"},
+            {"word": "吃饭", "meaning": "eat"},
+            {"word": "水", "meaning": "water"},
+            {"word": "猫", "meaning": "cat"},
+            {"word": "狗", "meaning": "dog"}
+        ],
+        "intermediate": [
+            {"word": "经济", "meaning": "economy"},
+            {"word": "环境", "meaning": "environment"},
+            {"word": "发展", "meaning": "development"},
+            {"word": "技术", "meaning": "technology"},
+            {"word": "教育", "meaning": "education"},
+            {"word": "文化", "meaning": "culture"},
+            {"word": "社会", "meaning": "society"},
+            {"word": "政府", "meaning": "government"},
+            {"word": "工作", "meaning": "work"},
+            {"word": "生活", "meaning": "life"}
+        ]
+    },
+    "spanish": {
+        "beginner": [
+            {"word": "hola", "meaning": "hello"},
+            {"word": "gracias", "meaning": "thank you"},
+            {"word": "adiós", "meaning": "goodbye"},
+            {"word": "amigo", "meaning": "friend"},
+            {"word": "estudiar", "meaning": "to study"},
+            {"word": "gustar", "meaning": "to like"},
+            {"word": "comer", "meaning": "to eat"},
+            {"word": "agua", "meaning": "water"},
+            {"word": "gato", "meaning": "cat"},
+            {"word": "perro", "meaning": "dog"}
+        ],
+        "intermediate": [
+            {"word": "economía", "meaning": "economy"},
+            {"word": "ambiente", "meaning": "environment"},
+            {"word": "desarrollo", "meaning": "development"},
+            {"word": "tecnología", "meaning": "technology"},
+            {"word": "educación", "meaning": "education"},
+            {"word": "cultura", "meaning": "culture"},
+            {"word": "sociedad", "meaning": "society"},
+            {"word": "gobierno", "meaning": "government"},
+            {"word": "trabajo", "meaning": "work"},
+            {"word": "vida", "meaning": "life"}
+        ]
+    }
+}
 
-CHINESE_WORDS_INTERMEDIATE = [
-    "经济",    # economy
-    "环境",    # environment
-    "发展",    # development
-    "技术",    # technology
-    "教育",    # education
-    "文化",    # culture
-    "社会",    # society
-    "政府",    # government
-    "工作",    # work
-    "生活",    # life
-]
+# Language code mapping for speech recognition
+LANGUAGE_CODES = {
+    "chinese": "zho",
+    "spanish": "spa",
+    "french": "fra",
+    "german": "deu",
+    "japanese": "jpn",
+    "korean": "kor",
+    "russian": "rus"
+}
+
 def record_audio(duration=5):
     # Create temporary file
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
@@ -152,14 +209,14 @@ def clean_text(text):
         end = text.find(')') + 1
         text = text[:start] + text[end:]
     
-    # Remove punctuation (。，！？etc.)
-    punctuation = '。，！？,.!?'
+    # Remove common punctuation
+    punctuation = '。，！？,.!?¡¿'
     for p in punctuation:
         text = text.replace(p, '')
     
     return text.strip()
 
-def transcribe_audio(file_path):
+def transcribe_audio(file_path, language="chinese"):
     # Load environment variables
     load_dotenv()
     
@@ -168,40 +225,86 @@ def transcribe_audio(file_path):
         api_key=os.getenv("ELEVENLABS_API_KEY")
     )
     
+    # Get language code
+    language_code = LANGUAGE_CODES.get(language, "eng")
+    
     # Open and read the audio file
     with open(file_path, 'rb') as audio_file:
         # Convert speech to text
         transcription = client.speech_to_text.convert(
             file=audio_file,
-            model_id="scribe_v1",  # Correct model ID
+            model_id="scribe_v1",
             tag_audio_events=True,
-            language_code="zho",  # Chinese Mandarin language code
+            language_code=language_code,
             diarize=True
         )
         
         return transcription.text
+
 def main():
     while True:
-        print("\nChinese Pronunciation Practice")
+        print("\nLanguage Pronunciation Practice")
         print("-----------------------------")
-        print("1. Practice pronunciation")
-        print("2. Manage word banks")
-        print("3. Exit")
+        print("1. Select language")
+        print("2. Practice pronunciation")
+        print("3. Manage word banks")
+        print("4. Exit")
         
-        choice = input("\nEnter your choice (1-3): ")
+        choice = input("\nEnter your choice (1-4): ")
         
         if choice == "1":
-            word_banks = load_word_banks()
+            print("\nAvailable languages:")
+            for i, lang in enumerate(DEFAULT_WORDS.keys(), 1):
+                print(f"{i}. {lang.capitalize()}")
+            
+            # Add option for other languages
+            print(f"{len(DEFAULT_WORDS) + 1}. Other")
+            
+            lang_choice = input(f"\nSelect language (1-{len(DEFAULT_WORDS) + 1}): ")
+            
+            try:
+                lang_idx = int(lang_choice) - 1
+                if 0 <= lang_idx < len(DEFAULT_WORDS):
+                    selected_language = list(DEFAULT_WORDS.keys())[lang_idx]
+                else:
+                    selected_language = input("Enter language name: ").lower()
+                    # Add empty default word banks if language not in defaults
+                    if selected_language not in DEFAULT_WORDS:
+                        DEFAULT_WORDS[selected_language] = {
+                            "beginner": [],
+                            "intermediate": []
+                        }
+                    # Add language code if not in mapping
+                    if selected_language not in LANGUAGE_CODES:
+                        code = input(f"Enter language code for {selected_language} (e.g., eng, fra, deu): ")
+                        LANGUAGE_CODES[selected_language] = code
+            except ValueError:
+                print("Invalid choice. Using Chinese as default.")
+                selected_language = "chinese"
+                
+            print(f"\nSelected language: {selected_language.capitalize()}")
+            
+        elif choice == "2":
+            if 'selected_language' not in locals():
+                selected_language = "chinese"
+                print(f"Using default language: {selected_language.capitalize()}")
+                
+            word_banks = load_word_banks(selected_language)
             print("\nChoose difficulty level:")
             print("1. Beginner")
             print("2. Intermediate")
             level_choice = input("Enter 1 or 2: ")
             
             word_bank = word_banks['beginner'] if level_choice == "1" else word_banks['intermediate']
+            
+            if not word_bank:
+                print(f"No words available for {selected_language} at this level. Please add some words first.")
+                continue
+                
             word_data = random.choice(word_bank)
             target_word = word_data['word']
             
-            print(f"\nPlease say this word in Chinese:")
+            print(f"\nPlease say this word in {selected_language.capitalize()}:")
             print(f"➡️  {target_word} ({word_data['meaning']})")
             
             # Recording countdown
@@ -212,7 +315,7 @@ def main():
                 
             # Record and process audio
             temp_file_path = record_audio(5)
-            transcribed_text = transcribe_audio(temp_file_path)
+            transcribed_text = transcribe_audio(temp_file_path, selected_language)
             
             # Clean up temporary file
             os.remove(temp_file_path)
@@ -230,13 +333,17 @@ def main():
             if cleaned_text == target_word:
                 print("\n👍 Perfect pronunciation!")
             else:
-                print("\nTMD! Try again!")
-            
-        elif choice == "2":
-            manage_words()
+                print("\nTry again!")
             
         elif choice == "3":
+            if 'selected_language' not in locals():
+                selected_language = "chinese"
+                print(f"Using default language: {selected_language.capitalize()}")
+            manage_words(selected_language)
+            
+        elif choice == "4":
             print("Goodbye!")
             break
+
 if __name__ == "__main__":
     main()
