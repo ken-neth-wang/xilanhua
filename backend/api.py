@@ -10,11 +10,16 @@ app = FastAPI()
 # Add CORS middleware to allow requests from your frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Update with your frontend URL
+    allow_origins=[
+        "http://localhost:8000",
+        "http://localhost:5173",  # Add Vite's default port
+        "http://127.0.0.1:5173"   # Also add this variant
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile = File(...)):
     # Save the uploaded file temporarily
