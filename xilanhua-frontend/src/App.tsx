@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { api } from './api';
+import { WordItem, WordBanks, AudioResult, AnkiStatus } from './types';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "./components/ui/tooltip";
+
+type Level = "beginner" | "intermediate";
 
 const App = () => {
   const [wordBanks, setWordBanks] = useState({
@@ -25,78 +29,74 @@ const App = () => {
       { word: "工作", meaning: "work" }
     ]
   });
-  const [activeWord, setActiveWord] = useState(null);
-  const [activeTab, setActiveTab] = useState("home");
-  const [currentLevel, setCurrentLevel] = useState("beginner");
-  const [recording, setRecording] = useState(false);
-  const [audioResult, setAudioResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [ankiStatus, setAnkiStatus] = useState(null);
+  const [activeWord, setActiveWord] = useState<WordItem | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("home");
+  const [currentLevel, setCurrentLevel] = useState<"beginner" | "intermediate">("beginner");
+  const [recording, setRecording] = useState<boolean>(false);
+  const [audioResult, setAudioResult] = useState<AudioResult | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  useEffect(() => {
+    const fetchWordBanks = async () => {
+      try {
+        const data = await api.loadWordBanks();
+        setWordBanks(data);
+      } catch (error) {
+        console.error("Error loading word banks:", error);
+      }
+    };
 
-  // Load word banks from API
-// In App.tsx
-useEffect(() => {
-  const fetchWordBanks = async () => {
-    try {
-      const data = await api.loadWordBanks();
-      setWordBanks(data);
-    } catch (error) {
-      console.error("Error loading word banks:", error);
-    }
-  };
+    fetchWordBanks();
+  }, []);
 
-  fetchWordBanks();
-}, []);
-
-  const handlePractice = (word) => {
+  const handlePractice = (word: WordItem): void => {
     setActiveWord(word);
     setAudioResult(null);
   };
 
-  const startRecording = async () => {
+  const startRecording = async (): Promise<void> => {
     setRecording(true);
     setAudioResult(null);
-  
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       const audioChunks: BlobPart[] = [];
-  
-      mediaRecorder.ondataavailable = (event) => {
+
+      mediaRecorder.ondataavailable = (event: BlobEvent) => {
         audioChunks.push(event.data);
       };
-  
+
       mediaRecorder.start();
       await new Promise(resolve => setTimeout(resolve, 3000));
       mediaRecorder.stop();
       stream.getTracks().forEach(track => track.stop());
-  
+
       const audioBlob = await new Promise<Blob>((resolve) => {
         mediaRecorder.onstop = () => {
           const blob = new Blob(audioChunks, { type: 'audio/wav' });
           resolve(blob);
         };
       });
-  
+
       setLoading(true);
-  
+
       try {
         const result = await api.recordPronunciation(audioBlob);
         const matched = result.transcription.toLowerCase() === activeWord?.word.toLowerCase();
-  
+
         setAudioResult({
           success: matched,
           transcription: result.transcription,
-          target: activeWord?.word
+          target: activeWord?.word || ''
         });
-  
+
       } catch (error) {
         console.error('Error processing audio:', error);
       } finally {
         setLoading(false);
         setRecording(false);
       }
-  
+
     } catch (error) {
       console.error('Error starting recording:', error);
       setRecording(false);
@@ -104,7 +104,7 @@ useEffect(() => {
   };
 
 
-  const saveWordBanks = async (updatedWordBanks) => {
+  const saveWordBanks = async (updatedWordBanks: WordBanks): Promise<void> => {
     try {
       const result = await api.saveWordBanks(updatedWordBanks);
       setWordBanks(result);
@@ -201,88 +201,90 @@ useEffect(() => {
     </div>
   );
 
-  const WordBankManager = () => {
-    const [editBanks, setEditBanks] = useState({ ...wordBanks });
-    const [newWord, setNewWord] = useState({ word: "", meaning: "" });
-    const [currentLevelTab, setCurrentLevelTab] = useState("beginner");
-    const [ankiStatus, setAnkiStatus] = useState({
+  const WordBankManager: React.FC = () => {
+    const [editBanks, setEditBanks] = useState<WordBanks>({ ...wordBanks });
+    const [newWord, setNewWord] = useState<WordItem>({ word: "", meaning: "" });
+    const [currentLevelTab, setCurrentLevelTab] = useState<"beginner" | "intermediate">("beginner");
+    const [ankiStatus, setAnkiStatus] = useState<AnkiStatus>({
       has_extracted_db: false,
       extract_dir_exists: false,
-      pending_files: [] as string[]
+      pending_files: []
     });
 
-      // Add this section to your WordBankManager render
-      const AnkiStatus = () => {
-        const handleExtract = async (filename: string) => {
-          try {
-            const result = await api.extractAnkiDeck(filename);
-            if (result.status) {
-              // Refresh the Anki status after extraction
-              const newStatus = await api.checkAnkiStatus();
-              setAnkiStatus(newStatus);
-            }
-          } catch (error) {
-            console.error('Error extracting Anki deck:', error);
+
+
+    // Add this section to your WordBankManager render
+    const AnkiStatus = () => {
+      const handleExtract = async (filename: string) => {
+        try {
+          const result = await api.extractAnkiDeck(filename);
+          if (result.status) {
+            // Refresh the Anki status after extraction
+            const newStatus = await api.checkAnkiStatus();
+            setAnkiStatus(newStatus);
           }
-        };
-      
-        return (
-          <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
-            <h3 className="font-medium mb-2">Anki Import Status</h3>
-            
-            {ankiStatus.pending_files.length > 0 && (
-              <div className="mb-3">
-                <p className="text-amber-600 font-medium">Unextracted Anki Files:</p>
-                <ul className="list-disc list-inside">
-                  {ankiStatus.pending_files.map((file, index) => (
-                    <li key={index} className="flex items-center justify-between text-sm text-gray-600 py-1">
-                      <span>{file}</span>
-                      <button
-                        onClick={() => handleExtract(file)}
-                        className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-md hover:bg-emerald-200 transition-colors text-sm"
-                      >
-                        Extract
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-      
-            <div className="flex flex-col gap-2 text-sm">
-              <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${
-                  ankiStatus.extract_dir_exists ? 'bg-green-500' : 'bg-red-500'
+        } catch (error) {
+          console.error('Error extracting Anki deck:', error);
+        }
+      };
+
+      return (
+        <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+          <h3 className="font-medium mb-2">Anki Import Status</h3>
+
+          {ankiStatus.pending_files.map((file, index) => (
+            <li key={index} className="flex items-center justify-between text-sm text-gray-600 py-1">
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="truncate max-w-[200px]">{file}</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-sm">{file}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              <button
+                onClick={() => handleExtract(file)}
+                className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-md hover:bg-emerald-200 transition-colors text-sm ml-2 flex-shrink-0"
+              >
+                Extract
+              </button>
+            </li>
+          ))}
+
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex items-center">
+              <div className={`w-2 h-2 rounded-full mr-2 ${ankiStatus.extract_dir_exists ? 'bg-green-500' : 'bg-red-500'
                 }`} />
-                <span>Extraction Directory: {ankiStatus.extract_dir_exists ? 'Ready' : 'Not Found'}</span>
-              </div>
-              
-              <div className="flex items-center">
-                <div className={`w-2 h-2 rounded-full mr-2 ${
-                  ankiStatus.has_extracted_db ? 'bg-green-500' : 'bg-red-500'
-                }`} />
-                <span>Anki Database: {ankiStatus.has_extracted_db ? 'Found' : 'Not Found'}</span>
-              </div>
+              <span>Extraction Directory: {ankiStatus.extract_dir_exists ? 'Ready' : 'Not Found'}</span>
             </div>
-      
-            {!ankiStatus.has_extracted_db && (
-              <div className="mt-3">
-                <input
-                  type="file"
-                  accept=".apkg"
-                  onChange={handleAnkiImport}
-                  className="block w-full text-sm text-gray-500
+
+            <div className="flex items-center">
+              <div className={`w-2 h-2 rounded-full mr-2 ${ankiStatus.has_extracted_db ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+              <span>Anki Database: {ankiStatus.has_extracted_db ? 'Found' : 'Not Found'}</span>
+            </div>
+          </div>
+
+          {!ankiStatus.has_extracted_db && (
+            <div className="mt-3">
+              <input
+                type="file"
+                accept=".apkg"
+                onChange={handleAnkiImport}
+                className="block w-full text-sm text-gray-500
                     file:mr-4 file:py-2 file:px-4
                     file:rounded-md file:border-0
                     file:text-sm file:font-semibold
                     file:bg-emerald-50 file:text-emerald-700
                     hover:file:bg-emerald-100"
-                />
-              </div>
-            )}
-          </div>
-        );
-      };
+              />
+            </div>
+          )}
+        </div>
+      );
+    };
 
     useEffect(() => {
       const checkAnkiStatus = async () => {
@@ -293,7 +295,7 @@ useEffect(() => {
           console.error('Error checking Anki status:', error);
         }
       };
-  
+
       checkAnkiStatus();
     }, []);
 
@@ -308,14 +310,12 @@ useEffect(() => {
       try {
         const result = await api.importAnkiDeck(file);
         setEditBanks(result.word_banks);
-        // Show success message
       } catch (error) {
         console.error('Error importing Anki deck:', error);
-        // Show error message
       }
     };
 
-    const handleRemoveWord = (level, index) => {
+    const handleRemoveWord = (level: Level, index: number): void => {
       const updatedBanks = { ...editBanks };
       updatedBanks[level] = [...updatedBanks[level]];
       updatedBanks[level].splice(index, 1);
@@ -342,11 +342,14 @@ useEffect(() => {
             <TabsTrigger value="intermediate" className="flex-1">Intermediate</TabsTrigger>
           </TabsList>
 
-          {["beginner", "intermediate"].map(level => (
+          {(["beginner", "intermediate"] as const).map((level) => (
             <TabsContent key={level} value={level}>
               <div className="space-y-3">
-                {editBanks[level].map((item, index) => (
-                  <div key={index} className="flex items-center border border-gray-200 p-3 rounded-md">
+                {editBanks[level].map((item: WordItem, index: number) => (
+                  <div
+                    key={index}
+                    className="flex items-center border border-gray-200 p-3 rounded-md"
+                  >
                     <div className="flex-1">
                       <div className="font-medium">{item.word}</div>
                       <div className="text-gray-600 text-sm">{item.meaning}</div>
@@ -366,15 +369,11 @@ useEffect(() => {
                     <div>
                       <label className="block text-sm mb-1">Chinese Word</label>
                       <input
-                        type="file"
-                        accept=".apkg"
-                        onChange={handleAnkiImport}
-                        className="block w-full text-sm text-gray-500
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-md file:border-0
-            file:text-sm file:font-semibold
-            file:bg-emerald-50 file:text-emerald-700
-            hover:file:bg-emerald-100"
+                        type="text"
+                        className="w-full p-2 border border-gray-300 rounded-md"
+                        value={newWord.word}
+                        onChange={(e) => setNewWord({ ...newWord, word: e.target.value })}
+                        placeholder="e.g. 你好"
                       />
                     </div>
                     <div>
