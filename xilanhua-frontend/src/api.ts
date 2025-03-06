@@ -69,4 +69,36 @@ export const api = {
     const response = await axios.post(`${API_BASE_URL}/extract-anki?filename=${encodeURIComponent(filename)}`);
     return response.data;
   },
+  
+  extractPdfVocab: async (pdfFile: File): Promise<{
+    message: string;
+    word_banks: WordBanks;
+    new_words: {
+      beginner: WordData[];
+      intermediate: WordData[];
+    };
+    extracted_text_length: number;
+  }> => {
+    const formData = new FormData();
+    formData.append('pdf_file', pdfFile);
+    
+    const response = await axios.post(`${API_BASE_URL}/extract-pdf`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+  extractVocabFromText: async (text: string): Promise<{
+    message: string;
+    success: boolean;
+    word_banks?: WordBanks;
+    new_words?: {
+      beginner: WordData[];
+      intermediate: WordData[];
+    };
+  }> => {
+    const response = await axios.post(`${API_BASE_URL}/extract-text`, { text });
+    return response.data;
+  },
 };

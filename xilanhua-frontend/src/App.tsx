@@ -200,6 +200,73 @@ const App = () => {
       </div>
     </div>
   );
+  const PdfExtractor = () => {
+  const [extracting, setExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState<string | null>(null);
+
+  const handlePdfImport = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setExtracting(true);
+    setExtractionError(null);
+
+    try {
+      const result = await api.extractPdfVocab(file);
+      setEditBanks(result.word_banks);
+      
+      // Show success message
+      alert(`Successfully extracted ${
+        result.new_words.beginner.length + result.new_words.intermediate.length
+      } new words from PDF`);
+      
+    } catch (error) {
+      console.error('Error extracting PDF vocabulary:', error);
+      setExtractionError('Failed to extract vocabulary from PDF');
+    } finally {
+      setExtracting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+      <h3 className="font-medium mb-2">PDF Vocabulary Extraction</h3>
+      <p className="text-sm text-gray-600 mb-3">
+        Upload a PDF to automatically extract Chinese vocabulary words
+      </p>
+
+      <div className="mt-3">
+        <input
+          type="file"
+          accept=".pdf"
+          onChange={handlePdfImport}
+          disabled={extracting}
+          className="block w-full text-sm text-gray-500
+              file:mr-4 file:py-2 file:px-4
+              file:rounded-md file:border-0
+              file:text-sm file:font-semibold
+              file:bg-emerald-50 file:text-emerald-700
+              hover:file:bg-emerald-100
+              disabled:opacity-50 disabled:cursor-not-allowed"
+        />
+      </div>
+
+      {extracting && (
+        <div className="mt-3 flex items-center text-sm text-emerald-700">
+          <div className="w-4 h-4 border-2 border-emerald-700 border-t-transparent rounded-full animate-spin mr-2"></div>
+          Extracting vocabulary...
+        </div>
+      )}
+
+      {extractionError && (
+        <div className="mt-3 text-sm text-red-600">
+          {extractionError}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
   const WordBankManager: React.FC = () => {
     const [editBanks, setEditBanks] = useState<WordBanks>({ ...wordBanks });
@@ -210,6 +277,133 @@ const App = () => {
       extract_dir_exists: false,
       pending_files: []
     });
+
+    const TextExtractor = () => {
+      const [text, setText] = useState("");
+      const [processing, setProcessing] = useState(false);
+      const [processingError, setProcessingError] = useState<string | null>(null);
+      const [showPreview, setShowPreview] = useState(false);
+      const [characterCount, setCharacterCount] = useState(0);
+    
+      const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        const newText = e.target.value;
+        setText(newText);
+        // Count Chinese characters
+        const chineseCharCount = (newText.match(/[\u4e00-\u9fff]/g) || []).length;
+        setCharacterCount(chineseCharCount);
+      };
+    
+      const handleExtract = async () => {
+        if (!text.trim()) {
+          setProcessingError("Please enter some text");
+          return;
+        }
+    
+        setProcessing(true);
+        setProcessingError(null);
+    
+        try {
+          const result = await api.extractVocabFromText(text);
+          
+          if (result.success && result.word_banks) {
+            setEditBanks(result.word_banks);
+            
+            // Show success message
+            alert(`Successfully extracted ${
+              result.new_words?.beginner.length || 0 + result.new_words?.intermediate.length || 0
+            } new words from text`);
+            
+            // Clear the input
+            setText("");
+            setShowPreview(false);
+          } else {
+            setProcessingError(result.message || 'Failed to extract vocabulary from text');
+          }
+        } catch (error) {
+          console.error('Error extracting vocabulary from text:', error);
+          setProcessingError('Failed to process text');
+        } finally {
+          setProcessing(false);
+        }
+      };
+    
+      return (
+        <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+          <h3 className="font-medium mb-2">Text Vocabulary Extraction</h3>
+          <p className="text-sm text-gray-600 mb-3">
+            Paste Chinese text to automatically extract vocabulary words
+          </p>
+    
+          <div className="space-y-3">
+            <div className="relative">
+              <textarea
+                value={text}
+                onChange={handleTextChange}
+                placeholder="Paste Chinese text here..."
+                className="w-full h-32 p-3 border border-gray-300 rounded-md resize-none
+                          focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                disabled={processing}
+              />
+              <div className="absolute bottom-2 right-2 text-xs text-gray-500">
+                {characterCount} Chinese characters
+              </div>
+            </div>
+    
+            {text && (
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => setShowPreview(!showPreview)}
+                  className="text-sm text-emerald-700 hover:text-emerald-800"
+                >
+                  {showPreview ? 'Hide Preview' : 'Show Preview'}
+                </button>
+                <span className="text-gray-300">|</span>
+                <button
+                  onClick={() => setText('')}
+                  className="text-sm text-red-600 hover:text-red-700"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+    
+            {showPreview && text && (
+              <div className="mt-2 p-3 bg-gray-50 rounded-md">
+                <h4 className="text-sm font-medium mb-1">Preview:</h4>
+                <div className="text-sm text-gray-600 break-words">
+                  {text}
+                </div>
+              </div>
+            )}
+    
+            <button
+              onClick={handleExtract}
+              disabled={!text.trim() || processing}
+              className={`w-full py-2 px-4 rounded-md font-medium text-white
+                ${!text.trim() || processing 
+                  ? 'bg-gray-300 cursor-not-allowed' 
+                  : 'bg-emerald-800 hover:bg-emerald-900 transition-colors'}`}
+            >
+              {processing ? (
+                <div className="flex items-center justify-center">
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Processing...
+                </div>
+              ) : (
+                'Extract Vocabulary'
+              )}
+            </button>
+    
+            {processingError && (
+              <div className="text-sm text-red-600">
+                {processingError}
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    };
+    
 
 
 
@@ -335,7 +529,8 @@ const App = () => {
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
         <AnkiStatus />
-
+        <PdfExtractor /> 
+        <TextExtractor /> 
         <Tabs value={currentLevelTab} onValueChange={setCurrentLevelTab}>
           <TabsList className="mb-4 w-full">
             <TabsTrigger value="beginner" className="flex-1">Beginner</TabsTrigger>
