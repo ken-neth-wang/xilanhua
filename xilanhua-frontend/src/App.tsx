@@ -31,20 +31,22 @@ const App = () => {
   const [recording, setRecording] = useState(false);
   const [audioResult, setAudioResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [ankiStatus, setAnkiStatus] = useState(null);
 
   // Load word banks from API
-  useEffect(() => {
-    const fetchWordBanks = async () => {
-      try {
-        const data = await api.loadWordBanks();
-        setWordBanks(data);
-      } catch (error) {
-        console.error("Error loading word banks:", error);
-      }
-    };
-  
-    fetchWordBanks();
-  }, []);
+// In App.tsx
+useEffect(() => {
+  const fetchWordBanks = async () => {
+    try {
+      const data = await api.loadWordBanks();
+      setWordBanks(data);
+    } catch (error) {
+      console.error("Error loading word banks:", error);
+    }
+  };
+
+  fetchWordBanks();
+}, []);
 
   const handlePractice = (word) => {
     setActiveWord(word);
@@ -203,6 +205,97 @@ const App = () => {
     const [editBanks, setEditBanks] = useState({ ...wordBanks });
     const [newWord, setNewWord] = useState({ word: "", meaning: "" });
     const [currentLevelTab, setCurrentLevelTab] = useState("beginner");
+    const [ankiStatus, setAnkiStatus] = useState({
+      has_extracted_db: false,
+      extract_dir_exists: false,
+      pending_files: [] as string[]
+    });
+
+      // Add this section to your WordBankManager render
+      const AnkiStatus = () => {
+        const handleExtract = async (filename: string) => {
+          try {
+            const result = await api.extractAnkiDeck(filename);
+            if (result.status) {
+              // Refresh the Anki status after extraction
+              const newStatus = await api.checkAnkiStatus();
+              setAnkiStatus(newStatus);
+            }
+          } catch (error) {
+            console.error('Error extracting Anki deck:', error);
+          }
+        };
+      
+        return (
+          <div className="bg-white rounded-lg p-4 mb-4 border border-gray-200">
+            <h3 className="font-medium mb-2">Anki Import Status</h3>
+            
+            {ankiStatus.pending_files.length > 0 && (
+              <div className="mb-3">
+                <p className="text-amber-600 font-medium">Unextracted Anki Files:</p>
+                <ul className="list-disc list-inside">
+                  {ankiStatus.pending_files.map((file, index) => (
+                    <li key={index} className="flex items-center justify-between text-sm text-gray-600 py-1">
+                      <span>{file}</span>
+                      <button
+                        onClick={() => handleExtract(file)}
+                        className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-md hover:bg-emerald-200 transition-colors text-sm"
+                      >
+                        Extract
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+      
+            <div className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center">
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  ankiStatus.extract_dir_exists ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span>Extraction Directory: {ankiStatus.extract_dir_exists ? 'Ready' : 'Not Found'}</span>
+              </div>
+              
+              <div className="flex items-center">
+                <div className={`w-2 h-2 rounded-full mr-2 ${
+                  ankiStatus.has_extracted_db ? 'bg-green-500' : 'bg-red-500'
+                }`} />
+                <span>Anki Database: {ankiStatus.has_extracted_db ? 'Found' : 'Not Found'}</span>
+              </div>
+            </div>
+      
+            {!ankiStatus.has_extracted_db && (
+              <div className="mt-3">
+                <input
+                  type="file"
+                  accept=".apkg"
+                  onChange={handleAnkiImport}
+                  className="block w-full text-sm text-gray-500
+                    file:mr-4 file:py-2 file:px-4
+                    file:rounded-md file:border-0
+                    file:text-sm file:font-semibold
+                    file:bg-emerald-50 file:text-emerald-700
+                    hover:file:bg-emerald-100"
+                />
+              </div>
+            )}
+          </div>
+        );
+      };
+
+    useEffect(() => {
+      const checkAnkiStatus = async () => {
+        try {
+          const status = await api.checkAnkiStatus();
+          setAnkiStatus(status);
+        } catch (error) {
+          console.error('Error checking Anki status:', error);
+        }
+      };
+  
+      checkAnkiStatus();
+    }, []);
 
     const handleSave = () => {
       saveWordBanks(editBanks);
@@ -241,6 +334,7 @@ const App = () => {
     return (
       <div className="bg-white rounded-lg p-6 shadow-sm">
         <h2 className="text-xl font-semibold mb-4">Manage Word Banks</h2>
+        <AnkiStatus />
 
         <Tabs value={currentLevelTab} onValueChange={setCurrentLevelTab}>
           <TabsList className="mb-4 w-full">

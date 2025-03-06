@@ -1,5 +1,4 @@
-# api.py
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Query, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 import tempfile
 import os
@@ -19,6 +18,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.post("/api/extract-anki")
+async def extract_anki_deck(filename: str = Query(..., description="Name of the Anki deck file to extract")):
+    try:
+        from ank import extract_apkg
+        
+        # Check if file exists
+        if not os.path.exists(filename):
+            raise HTTPException(status_code=404, detail=f"File {filename} not found")
+            
+        extract_dir = "extracted_anki"
+        os.makedirs(extract_dir, exist_ok=True)
+        
+        # Extract the deck
+        extract_apkg(filename, extract_dir)
+        
+        return {
+            "message": f"Successfully extracted {filename}",
+            "status": True
+        }
+    except Exception as e:
+        print(f"Error extracting Anki deck: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/check-anki-status")
+async def check_anki_status():
+    """Check if there are any unextracted Anki files."""
+    try:
+        extract_dir = "extracted_anki"
+        db_path = os.path.join(extract_dir, "collection.anki2")
+        
+        status = {
+            "has_extracted_db": os.path.exists(db_path),
+            "extract_dir_exists": os.path.exists(extract_dir),
+            "pending_files": []
+        }
+        
+        # Check for any .apkg files in the current directory
+        for file in os.listdir():
+            if file.endswith('.apkg'):
+                status["pending_files"].append(file)
+        
+        return status
+    except Exception as e:
+        print(f"Error checking Anki status: {str(e)}")
+        from fastapi import HTTPException
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/transcribe")
 async def transcribe(audio: UploadFile = File(...)):

@@ -53,5 +53,20 @@ export const api = {
       },
     });
     return response.data;
-  }
+  },
+  checkAnkiStatus: async (): Promise<{
+    has_extracted_db: boolean;
+    extract_dir_exists: boolean;
+    pending_files: string[];
+  }> => {
+    const response = await axios.get(`${API_BASE_URL}/check-anki-status`);
+    return response.data;
+  },
+  extractAnkiDeck: async (filename: string): Promise<{
+    message: string;
+    status: boolean;
+  }> => {
+    const response = await axios.post(`${API_BASE_URL}/extract-anki?filename=${encodeURIComponent(filename)}`);
+    return response.data;
+  },
 };
