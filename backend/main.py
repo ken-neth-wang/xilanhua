@@ -16,28 +16,23 @@ def load_word_banks(language="chinese"):
     }
     
     try:
-        # Debug: Print current working directory
         print(f"Current working directory when loading: {os.getcwd()}")
         
-        # Use absolute paths based on the location of the script
         base_dir = os.path.dirname(os.path.abspath(__file__))
         words_dir = os.path.join(base_dir, 'words')
         
         print(f"Using base directory: {base_dir}")
         print(f"Words directory path: {words_dir}")
         
-        # Create words directory if it doesn't exist
         if not os.path.exists(words_dir):
             print(f"Creating words directory at {words_dir}")
             os.makedirs(words_dir)
         
-        # Create language directory if it doesn't exist
         language_dir = os.path.join(words_dir, language)
         if not os.path.exists(language_dir):
             print(f"Creating language directory at {language_dir}")
             os.makedirs(language_dir)
         
-        # Load beginner words
         beginner_path = os.path.join(language_dir, 'beginner.json')
         print(f"Looking for beginner words at: {beginner_path}")
         
@@ -49,7 +44,6 @@ def load_word_banks(language="chinese"):
         else:
             print(f"Beginner words file not found")
                 
-        # Load intermediate words
         intermediate_path = os.path.join(language_dir, 'intermediate.json')
         print(f"Looking for intermediate words at: {intermediate_path}")
         
@@ -65,7 +59,6 @@ def load_word_banks(language="chinese"):
         print(f"Error loading word banks: {e}")
         import traceback
         traceback.print_exc()
-        # Use default words if files can't be loaded
         print(f"Using default words for {language}")
         word_banks['beginner'] = DEFAULT_WORDS[language]['beginner']
         word_banks['intermediate'] = DEFAULT_WORDS[language]['intermediate']
@@ -75,19 +68,16 @@ def load_word_banks(language="chinese"):
 def save_word_banks(word_banks, language="chinese"):
     """Save word banks to JSON files for the specified language"""
     try:
-        # Use absolute paths based on the location of the script
         base_dir = os.path.dirname(os.path.abspath(__file__))
         words_dir = os.path.join(base_dir, 'words')
         
         print(f"Using base directory: {base_dir}")
         print(f"Words directory path: {words_dir}")
         
-        # Create words directory if it doesn't exist
         if not os.path.exists(words_dir):
             print(f"Creating words directory at {words_dir}")
             os.makedirs(words_dir)
             
-        # Create language directory if it doesn't exist
         language_dir = os.path.join(words_dir, language)
         if not os.path.exists(language_dir):
             print(f"Creating language directory at {language_dir}")
@@ -165,7 +155,6 @@ def manage_words(language):
             save_word_banks(word_banks, language)
             break
 
-# Default word banks for different languages
 DEFAULT_WORDS = {
     "chinese": {
         "beginner": [
@@ -221,7 +210,6 @@ DEFAULT_WORDS = {
     }
 }
 
-# Language code mapping for speech recognition
 LANGUAGE_CODES = {
     "chinese": "zho",
     "spanish": "spa",
@@ -233,25 +221,21 @@ LANGUAGE_CODES = {
 }
 
 def record_audio(duration=5):
-    # Create temporary file
     temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
     
     print(f"Recording for {duration} seconds... Speak now!")
     
-    # Use sox's rec command
     subprocess.run(['rec', '-q', temp_file.name, 'trim', '0', str(duration)])
     
     print("Recording finished!")
     return temp_file.name
 
 def clean_text(text):
-    # Remove parenthetical content
     while '(' in text and ')' in text:
         start = text.find('(')
         end = text.find(')') + 1
         text = text[:start] + text[end:]
     
-    # Remove common punctuation
     punctuation = '。，！？,.!?¡¿'
     for p in punctuation:
         text = text.replace(p, '')
@@ -259,20 +243,15 @@ def clean_text(text):
     return text.strip()
 
 def transcribe_audio(file_path, language="chinese"):
-    # Load environment variables
     load_dotenv()
     
-    # Initialize ElevenLabs client
     client = ElevenLabs(
         api_key=os.getenv("ELEVENLABS_API_KEY")
     )
     
-    # Get language code
     language_code = LANGUAGE_CODES.get(language, "eng")
     
-    # Open and read the audio file
     with open(file_path, 'rb') as audio_file:
-        # Convert speech to text
         try:
             transcription = client.speech_to_text.convert(
                 file=audio_file,
@@ -288,7 +267,7 @@ def transcribe_audio(file_path, language="chinese"):
             return transcription.text
         except Exception as e:
             print(f"Error in transcribe_audio: {str(e)}")
-            raise e  # Re-raise to be caught by the API endpoint
+            raise e 
 def main():
     while True:
         print("\nLanguage Pronunciation Practice")
@@ -305,7 +284,6 @@ def main():
             for i, lang in enumerate(DEFAULT_WORDS.keys(), 1):
                 print(f"{i}. {lang.capitalize()}")
             
-            # Add option for other languages
             print(f"{len(DEFAULT_WORDS) + 1}. Other")
             
             lang_choice = input(f"\nSelect language (1-{len(DEFAULT_WORDS) + 1}): ")
@@ -316,13 +294,11 @@ def main():
                     selected_language = list(DEFAULT_WORDS.keys())[lang_idx]
                 else:
                     selected_language = input("Enter language name: ").lower()
-                    # Add empty default word banks if language not in defaults
                     if selected_language not in DEFAULT_WORDS:
                         DEFAULT_WORDS[selected_language] = {
                             "beginner": [],
                             "intermediate": []
                         }
-                    # Add language code if not in mapping
                     if selected_language not in LANGUAGE_CODES:
                         code = input(f"Enter language code for {selected_language} (e.g., eng, fra, deu): ")
                         LANGUAGE_CODES[selected_language] = code
@@ -355,23 +331,18 @@ def main():
             print(f"\nPlease say this word in {selected_language.capitalize()}:")
             print(f"➡️  {target_word} ({word_data['meaning']})")
             
-            # Recording countdown
             print("\nRecording will start in 3 seconds...")
             for i in range(3, 0, -1):
                 print(i)
                 time.sleep(1)
                 
-            # Record and process audio
             temp_file_path = record_audio(5)
             transcribed_text = transcribe_audio(temp_file_path, selected_language)
             
-            # Clean up temporary file
             os.remove(temp_file_path)
             
-            # Clean the transcribed text
             cleaned_text = clean_text(transcribed_text)
             
-            # Print results and compare
             print("\nResults:")
             print("--------------")
             print(f"Target word: {target_word}")

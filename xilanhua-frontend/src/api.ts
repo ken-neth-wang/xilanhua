@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { WordBanks, WordData } from './types';
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api'; // Note: FastAPI typically runs on 8000
+const API_BASE_URL = 'http://127.0.0.1:8000/api'; 
 
 export const api = {
   loadWordBanks: async (): Promise<WordBanks> => {
@@ -99,6 +99,13 @@ export const api = {
     };
   }> => {
     const response = await axios.post(`${API_BASE_URL}/extract-text`, { text });
+    return response.data;
+  },
+  removeWord: async (level: string, word: string): Promise<{
+    message: string;
+    word_banks: WordBanks;
+  }> => {
+    const response = await axios.delete(`${API_BASE_URL}/words/${level}/${encodeURIComponent(word)}`);
     return response.data;
   },
 };
